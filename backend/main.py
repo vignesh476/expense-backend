@@ -2,23 +2,22 @@ from fastapi import FastAPI, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
 from sqlalchemy.orm import Session
-
 from database import SessionLocal, engine
 from models import Transaction, Base
 import os
 Base.metadata.create_all(bind=engine)
 from email.message import EmailMessage
 import smtplib
-import smtplib
-from email.message import EmailMessage
 from openpyxl import Workbook
 from fastapi import Body
 import tempfile
 import os
-
+# from . import (SMTP_HOST,SMTP_PASSWORD,SMTP_PORT,SMTP_USERNAME,EMAIL_FROM)
 app = FastAPI()
 import logging
 # Email settings
+from dotenv import load_dotenv
+load_dotenv()
 
 SMTP_HOST = os.getenv("SMTP_HOST")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
@@ -101,19 +100,26 @@ def send_expense_summary_email(to_email: str, excel_path: str):
     msg["To"] = to_email
     msg["Subject"] = "Your Expense Summary 📊"
     msg.set_content("Please find attached your expense summary.")
+    try:
+        with open(excel_path, "rb") as f:
+            msg.add_attachment(
+                f.read(),
+                maintype="application",
+                subtype="vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                filename="expense_summary.xlsx",
+            )
+    except:
 
-    with open(excel_path, "rb") as f:
-        msg.add_attachment(
-            f.read(),
-            maintype="application",
-            subtype="vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            filename="expense_summary.xlsx",
-        )
+        with smtplib.SMTP(SMTP_HOST, int(SMTP_PORT)) as server:
+            server.starttls()
+            server.login(SMTP_USERNAME,SMTP_PASSWORD)
+            server.send_message(msg)
+    finally:
+         with smtplib.SMTP(SMTP_HOST, int(SMTP_PORT)) as server:
+            server.starttls()
+            server.login(SMTP_USERNAME,SMTP_PASSWORD)
+            server.send_message(msg)
 
-    with smtplib.SMTP(os.getenv("SMTP_HOST"), int(os.getenv("SMTP_PORT"))) as server:
-        server.starttls()
-        server.login(os.getenv("SMTP_USERNAME"), os.getenv("SMTP_PASSWORD"))
-        server.send_message(msg)
 
 @app.get("/summary")
 def get_summary(
