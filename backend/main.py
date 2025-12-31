@@ -1,14 +1,16 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from datetime import datetime 
+from datetime import datetime
 from sqlalchemy.orm import Session
+
 from database import SessionLocal, engine
 from models import Transaction, Base
 
-Base.metadata.create_all(bind = engine)
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
+# ================= CORS =================
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -17,8 +19,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-
+# ================= DB =================
 def get_db():
     db = SessionLocal()
     try:
@@ -26,22 +27,41 @@ def get_db():
     finally:
         db.close()
 
+# ================= DEVICE ID =================
+def get_device_id(x_device_id: str = Header(...)):
+    return x_device_id
+
+# ================= ADD TRANSACTION =================
 @app.post("/transaction")
-def add_transaction(amount:float, type:str):
-    """created_at is in datetime.now format"""
-    db: Session = next(get_db())
-    tx = Transaction(amount= amount, type = type)
+def add_transaction(
+    amount: float,
+    type: str,
+    device_id: str = Depends(get_device_id),
+    db: Session = Depends(get_db),
+):
+    tx = Transaction(
+        device_id=device_id,
+        amount=amount,
+        type=type,
+    )
     db.add(tx)
     db.commit()
     db.refresh(tx)
     return tx
 
+# ================= SUMMARY =================
 @app.get("/summary")
-def get_summary():
-    db: Session = next(get_db())
-    now = datetime.now()
+def get_summary(
+    device_id: str = Depends(get_device_id),
+    db: Session = Depends(get_db),
+):
+    now = datetime.utcnow()
 
-    transactions = db.query(Transaction).all()
+    transactions = (
+        db.query(Transaction)
+        .filter(Transaction.device_id == device_id)
+        .all()
+    )
 
     today_income = today_expense = 0
     month_income = month_expense = 0
@@ -52,7 +72,7 @@ def get_summary():
             today_entries.append({
                 "id": t.id,
                 "amount": t.amount,
-                "type": t.type
+                "type": t.type,
             })
 
             if t.type == "income":
@@ -66,35 +86,57 @@ def get_summary():
             else:
                 month_expense += t.amount
 
-    savings = month_income - month_expense
-
     return {
-        "today": {"income": today_income, "expense": today_expense},
-        "month": {"income": month_income, "expense": month_expense},
-        "savings": savings,
-        "today_entries": today_entries
+        "today": {
+            "income": today_income,
+            "expense": today_expense,
+        },
+        "month": {
+            "income": month_income,
+            "expense": month_expense,
+        },
+        "savings": month_income - month_expense,
+        "today_entries": today_entries,
     }
 
+# ================= DELETE =================
 @app.delete("/transaction/{tx_id}")
-def delete_transaction(tx_id: int):
-    db: Session = next(get_db())
-    tx = db.query(Transaction).filter(Transaction.id == tx_id).first()
+def delete_transaction(
+    tx_id: int,
+    device_id: str = Depends(get_device_id),
+    db: Session = Depends(get_db),
+):
+    tx = (
+        db.query(Transaction)
+        .filter(Transaction.id == tx_id, Transaction.device_id == device_id)
+        .first()
+    )
     if tx:
         db.delete(tx)
         db.commit()
     return {"ok": True}
 
+# ================= UPDATE =================
 @app.put("/transaction/{tx_id}")
-def update_transaction(tx_id: int, amount: float, type: str):
-    db: Session = next(get_db())
-    tx = db.query(Transaction).filter(Transaction.id == tx_id).first()
+def update_transaction(
+    tx_id: int,
+    amount: float,
+    type: str,
+    device_id: str = Depends(get_device_id),
+    db: Session = Depends(get_db),
+):
+    tx = (
+        db.query(Transaction)
+        .filter(Transaction.id == tx_id, Transaction.device_id == device_id)
+        .first()
+    )
     if tx:
         tx.amount = amount
         tx.type = type
         db.commit()
     return {"ok": True}
 
-
+# ================= RUN =================
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000)
