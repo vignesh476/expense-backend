@@ -94,4 +94,4 @@ def update_transaction(tx_id: int, amount: float, type: str):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", port=8001)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000)
