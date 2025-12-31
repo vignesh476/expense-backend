@@ -11,10 +11,16 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:5173",      # Vite local
+        "http://127.0.0.1:5173",
+        "https://695514499fd26366c8c9899f--marvelous-pastelito-f03022.netlify.app"
+    ],
+    allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"]
+    allow_headers=["*"],
 )
+
 
 def get_db():
     db = SessionLocal()
