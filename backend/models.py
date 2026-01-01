@@ -10,3 +10,4 @@ class Transaction(Base):
     amount = Column(Float)
     type = Column(String)
     created_at = Column(DateTime, default=datetime.utcnow)
+    description = Column(String, default="")
