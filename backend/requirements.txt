@@ -1,8 +1,10 @@
 fastapi
-uvicorn
-sqlalchemy
-pydantic
+uvicorn[standard]
+pymongo
+dnspython
+python-jose[cryptography]
+passlib[bcrypt]
 python-dotenv
-email-validator
 openpyxl
-dotenv
+resend
+pydantic[email]
