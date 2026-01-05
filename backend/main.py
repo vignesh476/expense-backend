@@ -68,7 +68,7 @@ FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
 EMAIL_FROM = os.getenv(
     "EMAIL_FROM",
-    "Resend <onboarding@resend.dev>"
+    "Expense<buggaramvignesh@gmail.com>"
 )
 
 # Validate critical env vars
@@ -270,7 +270,7 @@ def forgot(email: EmailStr = Body(...)):
 
     try:
         msg = EmailMessage()
-        msg["From"] = os.getenv("SENDER_EMAIL")
+        msg["From"] = os.getenv("EMAIL_FROM")
         msg["To"] = email
         msg["Subject"] = "Reset Your Password"
 
@@ -542,83 +542,101 @@ def download(monthly: bool = False, user=Depends(get_current_user)):
 #         logging.error(f"Error sending summary: {str(e)}")
 #         raise HTTPException(500, f"Failed to send summary: {str(e)}")
 
-
 @app.post("/send-summary")
 def send_summary(monthly: bool = False, user=Depends(get_current_user)):
+    report_type = "Monthly" if monthly else "Daily"
+    path = None
+
     try:
-        # 1️⃣ Build summary & create Excel
+        # 1️⃣ Try generating summary
         summary = build_summary(user["_id"], monthly=monthly)
         path = create_excel(summary, monthly=monthly)
 
-        report_type = "Monthly" if monthly else "Daily"
+        subject = f"Your {report_type} Expense Summary"
+        text_body = f"Please find attached your {report_type.lower()} expense summary."
+        html_body = f"""
+        <html>
+          <body>
+            <h3>{report_type} Expense Summary</h3>
+            <p>Please find attached your {report_type.lower()} expense summary.</p>
+            <hr />
+            <p style="font-size:12px;color:#777">
+              Sent by Expense Tracker App
+            </p>
+          </body>
+        </html>
+        """
 
-        # 2️⃣ Create Email
+    except Exception as e:
+        logging.error(f"Summary generation failed: {e}")
+
+        # ⚠️ FALLBACK MESSAGE
+        subject = f"{report_type} Expense Summary (Processing)"
+        text_body = (
+            "We are currently preparing your expense summary.\n\n"
+            "You will receive the detailed report shortly."
+        )
+        html_body = """
+        <html>
+          <body>
+            <h3>Expense Summary</h3>
+            <p>We are currently preparing your expense summary.</p>
+            <p>You will receive the detailed report shortly.</p>
+            <hr />
+            <p style="font-size:12px;color:#777">
+              Expense Tracker Team
+            </p>
+          </body>
+        </html>
+        """
+
+    try:
+        # 2️⃣ Build Email
         msg = EmailMessage()
-        msg["From"] = os.getenv("SENDER_EMAIL")
+        msg["From"] = os.getenv("EMAIL_FROM",'Expense<buggaramvignesh@gmail.com>')
         msg["To"] = user["email"]
-        msg["Subject"] = f"Your {report_type} Expense Summary"
+        msg["Subject"] = subject
 
-        msg.set_content(
-            f"Please find attached your {report_type.lower()} expense summary."
-        )
+        msg.set_content(text_body)
+        msg.add_alternative(html_body, subtype="html")
 
-        msg.add_alternative(
-            f"""
-            <html>
-              <body>
-                <h3>{report_type} Expense Summary</h3>
-                <p>Please find attached your {report_type.lower()} expense summary.</p>
-                <hr />
-                <p style="font-size:12px;color:#777">
-                  Sent by Expense Tracker App
-                </p>
-                <hr>
-                <p style="font-size:12px;color:#777">
-                You received this because you used Expense Tracker.
-                </p>
+        # 3️⃣ Attach Excel if available
+        if path and os.path.exists(path):
+            with open(path, "rb") as f:
+                msg.add_attachment(
+                    f.read(),
+                    maintype="application",
+                    subtype="vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    filename=f"expense-summary-{report_type.lower()}.xlsx",
+                )
 
-              </body>
-            </html>
-            """,
-            subtype="html",
-        )
-
-        # 3️⃣ Attach Excel file
-        with open(path, "rb") as f:
-            msg.add_attachment(
-                f.read(),
-                maintype="application",
-                subtype="vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                filename=f"expense-summary-{report_type.lower()}.xlsx",
-            )
-
-        # 4️⃣ Send via Brevo SMTP
+        # 4️⃣ SMTP SEND (CORRECT ORDER)
         with smtplib.SMTP(
-            os.getenv("BREVO_SMTP_HOST"),
-            int(os.getenv("BREVO_SMTP_PORT"))
+            os.getenv("BREVO_SMTP_HOST",'smtp-relay.brevo.com'),
+            int(os.getenv("BREVO_SMTP_PORT",587)),
         ) as server:
+            server.ehlo()
             server.starttls()
+            server.ehlo()
             server.login(
                 os.getenv("BREVO_SMTP_USER"),
                 os.getenv("BREVO_SMTP_PASS"),
             )
             server.send_message(msg)
 
-        # 5️⃣ Cleanup
+        return {"ok": True, "message": "Email sent successfully"}
+
+    except Exception as e:
+        logging.error(f"SMTP send failed: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Email service temporarily unavailable",
+        )
+
+    finally:
         if path and os.path.exists(path):
             os.remove(path)
 
-        return {
-            "ok": True,
-            "message": f"{report_type} summary sent successfully",
-        }
-
-    except Exception as e:
-        logging.error(f"Error sending summary: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail="Failed to send summary email",
-        )
 
 
 # @app.post("/send-emails")
@@ -745,7 +763,7 @@ def serialize_trip(trip: dict) -> dict:
 
 # ========== Endpoints ==========
 
-@app.post("/trip")
+@app.post("/trips")
 def create_trip(payload: TripCreate, user=Depends(get_current_user)):
     doc = {
         "user_id": user["_id"],
