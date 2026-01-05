@@ -625,7 +625,7 @@ def send_summary(monthly: bool = False, user=Depends(get_current_user)):
 # def send_mail() -> Dict:
 #     params: resend.Emails.SendParams = {
 #         "from":"Acme <onboarding@resend.dev>",
-#         "to": ['buggaramvignesh@gmail.com'],
+#         "to": [''],
 #         "subject": "Expenses",
 #         "html": "<strong>it works!</strong>",
 #     }
@@ -639,17 +639,17 @@ def send_summary(monthly: bool = False, user=Depends(get_current_user)):
 # @app.post("/send-email1")
 # def send_summary_email(to_email, html_content):
 #     msg = MIMEMultipart()
-#     msg["From"] = os.getenv("SENDER_EMAIL",'buggaramvignesh@gmail.com')
+#     msg["From"] = os.getenv("SENDER_EMAIL",'')
 #     msg["To"] = to_email
 #     msg["Subject"] = "Your Expense Summary"
 
 #     msg.attach(MIMEText(html_content, "html"))
 
-#     with smtplib.SMTP(os.getenv("BREVO_SMTP_HOST",'smtp-relay.brevo.com'), int(os.getenv("BREVO_SMTP_PORT",'587'))) as server:
+#     with smtplib.SMTP(os.getenv("BREVO_SMTP_HOST",''), int(os.getenv("BREVO_SMTP_PORT",'587'))) as server:
 #         server.starttls()
 #         server.login(
-#             os.getenv("BREVO_SMTP_USER",'9f4393001@smtp-brevo.com'),
-#             os.getenv("BREVO_SMTP_PASS",'xsmtpsib-1c047d1f5e5652479f3965f3a249b29b79170eb8f293a6843a17aaa693ee6484-u6se5cO3EOAy4IIl')
+#             os.getenv("BREVO_SMTP_USER",''),
+#             os.getenv("BREVO_SMTP_PASS",'')
 #         )
 #         server.send_message(msg)
 
