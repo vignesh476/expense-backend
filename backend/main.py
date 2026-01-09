@@ -386,13 +386,13 @@ async def forgot(request: Request, email: Optional[EmailStr] = Body(None, embed=
         )
 
         with smtplib.SMTP(
-            os.getenv("BREVO_SMTP_HOST1", 'smtp-relay.brevo.com'),
+            os.getenv("BREVO_SMTP_HOST", 'smtp-relay.brevo.com'),
             int(os.getenv("BREVO_SMTP_PORT", 587)),
         ) as server:
             server.starttls()
             server.login(
-                os.getenv("BREVO_SMTP_USER1", '9f4393001@smtp-brevo.com'),
-                os.getenv("BREVO_SMTP_PASS1", 'xsmtpsib-1c047d1f5e5652479f3965f3a249b29b79170eb8f293a6843a17aaa693ee6484-thq4gIaKNXQwiKiR'),
+                os.getenv("BREVO_SMTP_USER", '9f4393001@smtp-brevo.com'),
+                os.getenv("BREVO_SMTP_PASS1", 'xsmtpsib-1c047d1f5e5652479f3965f3a249b29b79170eb8f293a6843a17aaa693ee6484-M30pRtVWEJMemImU'),
             )
             server.send_message(msg)
 
