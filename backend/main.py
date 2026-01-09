@@ -4,7 +4,8 @@ from fastapi import (
     APIRouter,
     Depends,
     HTTPException,
-    Body
+    Body,
+    Request,
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
@@ -42,7 +43,7 @@ import math
 import logging
 
 # ================= Typing =================
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 
 # Load env (Render ignores .env, local uses it)
@@ -62,10 +63,13 @@ JWT_REFRESH_SECRET = os.getenv("JWT_REFRESH_SECRET", "dev_change_me_jwt_refresh_
 
 ACCESS_EXP = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 15))
 REFRESH_EXP = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", 7))
+# Guest token expiry (short-lived by default)
+GUEST_ACCESS_MIN = int(os.getenv("GUEST_ACCESS_MIN", 60))
+GUEST_REFRESH_DAYS = int(os.getenv("GUEST_REFRESH_DAYS", 1))
 
 # Frontend
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
-
+FRONTEND_URL_2 = os.getenv("FRONTEND_URL_2","")
 EMAIL_FROM = os.getenv(
     "EMAIL_FROM",
     "Expense<buggaramvignesh@gmail.com>"
@@ -104,6 +108,7 @@ allowed_origins = {
     "http://localhost:4173",
     "http://127.0.0.1:4173",
     "https://marvelous-pastelito-f03022.netlify.app",
+    FRONTEND_URL_2
 }
 
 # Optional: allow multiple frontend URLs via ENV
@@ -131,6 +136,9 @@ class RegisterSchema(BaseModel):
 class LoginSchema(BaseModel):
     email: EmailStr
     password: str
+
+class GuestLoginSchema(BaseModel):
+    nickname: Optional[str] = None
 
 # ================= PASSWORD =================
 def hash_password(password: str) -> str:
@@ -196,6 +204,50 @@ def login(data: LoginSchema):
         "refresh_token": refresh
     }
 
+@app.post("/guest-login")
+def guest_login(payload: GuestLoginSchema = Body(default=None)):
+    nickname = (payload.nickname if payload and payload.nickname else "Guest").strip() or "Guest"
+
+    # Enforce simple nickname constraints and uniqueness among guests
+    if len(nickname) < 2 or len(nickname) > 32:
+        raise HTTPException(400, "Nickname must be 2-32 characters")
+
+    # case-insensitive uniqueness for guest nicknames
+    existing = users_col.find_one({
+        "is_guest": True,
+        "nickname": {"$regex": f"^{nickname}$", "$options": "i"}
+    })
+    if existing:
+        raise HTTPException(409, "Nickname already taken. Choose a different one.")
+
+    doc = {
+        "email": None,
+        "password": None,
+        "is_guest": True,
+        "nickname": nickname,
+        "created": datetime.utcnow(),
+        "guest_expires_at": datetime.utcnow() + timedelta(days=GUEST_REFRESH_DAYS),
+    }
+    res = users_col.insert_one(doc)
+
+    access = create_token(
+        {"sub": str(res.inserted_id), "guest": True},
+        JWT_SECRET,
+        timedelta(minutes=GUEST_ACCESS_MIN),
+    )
+    refresh = create_token(
+        {"sub": str(res.inserted_id), "guest": True},
+        JWT_REFRESH_SECRET,
+        timedelta(days=GUEST_REFRESH_DAYS),
+    )
+
+    return {
+        "access_token": access,
+        "refresh_token": refresh,
+        "guest": True,
+        "user": {"id": str(res.inserted_id), "nickname": nickname},
+    }
+
 @app.post("/refresh")
 def refresh_token(token: str = Body(...)):
     try:
@@ -252,7 +304,39 @@ def refresh_token(token: str = Body(...)):
 
 
 @app.post("/forgot-password")
-def forgot(email: EmailStr = Body(...)):
+async def forgot(request: Request, email: Optional[EmailStr] = Body(None, embed=True)):
+    # Accept multiple input shapes: {"email": "..."}, raw JSON string, form data, or query param
+    if not email:
+        # Try JSON body
+        try:
+            data = await request.json()
+            if isinstance(data, dict):
+                email = data.get("email") or data.get("Email") or data.get("userEmail")
+            elif isinstance(data, str):
+                email = data
+        except Exception:
+            pass
+
+        # Try form body
+        if not email:
+            try:
+                form = await request.form()
+                email = form.get("email") if form else None
+            except Exception:
+                pass
+
+        # Try query param
+        if not email:
+            email = request.query_params.get("email")
+
+    # Validate email using Pydantic
+    try:
+        class _EmailModel(BaseModel):
+            email: EmailStr
+        email = _EmailModel(email=email).email
+    except Exception:
+        raise HTTPException(422, "Invalid or missing email")
+
     user = users_col.find_one({"email": email})
 
     # Do not reveal whether email exists
@@ -264,13 +348,12 @@ def forgot(email: EmailStr = Body(...)):
         JWT_SECRET,
         timedelta(minutes=15),
     )
-  
 
     link = f"{os.getenv('FRONTEND_URL')}/reset-password?token={token}"
 
     try:
         msg = EmailMessage()
-        msg["From"] = os.getenv("EMAIL_FROM")
+        msg["From"] = os.getenv("EMAIL_FROM", 'Expense<buggaramvignesh@gmail.com>')
         msg["To"] = email
         msg["Subject"] = "Reset Your Password"
 
@@ -303,13 +386,13 @@ def forgot(email: EmailStr = Body(...)):
         )
 
         with smtplib.SMTP(
-            os.getenv("BREVO_SMTP_HOST",'smtp-relay.brevo.com'),
-            int(os.getenv("BREVO_SMTP_PORT",'587')),
+            os.getenv("BREVO_SMTP_HOST1", 'smtp-relay.brevo.com'),
+            int(os.getenv("BREVO_SMTP_PORT", 587)),
         ) as server:
             server.starttls()
             server.login(
-                os.getenv("BREVO_SMTP_USER"),
-                os.getenv("BREVO_SMTP_PASS"),
+                os.getenv("BREVO_SMTP_USER1", '9f4393001@smtp-brevo.com'),
+                os.getenv("BREVO_SMTP_PASS1", 'xsmtpsib-1c047d1f5e5652479f3965f3a249b29b79170eb8f293a6843a17aaa693ee6484-thq4gIaKNXQwiKiR'),
             )
             server.send_message(msg)
 
@@ -593,7 +676,7 @@ def send_summary(monthly: bool = False, user=Depends(get_current_user)):
     try:
         # 2️⃣ Build Email
         msg = EmailMessage()
-        msg["From"] = os.getenv("EMAIL_FROM",'Expense<buggaramvignesh@gmail.com>')
+        msg["From"] = os.getenv("EMAIL_FROM1",'Expense<buggaramvignesh@gmail.com>')
         msg["To"] = user["email"]
         msg["Subject"] = subject
 
@@ -612,15 +695,15 @@ def send_summary(monthly: bool = False, user=Depends(get_current_user)):
 
         # 4️⃣ SMTP SEND (CORRECT ORDER)
         with smtplib.SMTP(
-            os.getenv("BREVO_SMTP_HOST",'smtp-relay.brevo.com'),
-            int(os.getenv("BREVO_SMTP_PORT",587)),
+            os.getenv("BREVO_SMTP_HOST1",'smtp-relay.brevo.com'),
+            int(os.getenv("BREVO_SMTP_PORT1",587)),
         ) as server:
             server.ehlo()
             server.starttls()
             server.ehlo()
             server.login(
-                os.getenv("BREVO_SMTP_USER"),
-                os.getenv("BREVO_SMTP_PASS"),
+                os.getenv("BREVO_SMTP_USER1",'9f4393001@smtp-brevo.com'),
+                os.getenv("BREVO_SMTP_PASS1",'xsmtpsib-1c047d1f5e5652479f3965f3a249b29b79170eb8f293a6843a17aaa693ee6484-thq4gIaKNXQwiKiR'),
             )
             server.send_message(msg)
 
