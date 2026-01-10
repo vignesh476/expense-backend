@@ -69,7 +69,7 @@ GUEST_REFRESH_DAYS = int(os.getenv("GUEST_REFRESH_DAYS", 1))
 
 # Frontend
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
-FRONTEND_URL_2 = os.getenv("FRONTEND_URL_2","")
+FRONTEND_URL_2 = os.getenv("FRONTEND_URL_2","https://expense-gamma-six.vercel.app")
 EMAIL_FROM = os.getenv(
     "EMAIL_FROM",
     "Expense<buggaramvignesh@gmail.com>"
@@ -676,7 +676,7 @@ def send_summary(monthly: bool = False, user=Depends(get_current_user)):
     try:
         # 2️⃣ Build Email
         msg = EmailMessage()
-        msg["From"] = os.getenv("EMAIL_FROM1",'Expense<buggaramvignesh@gmail.com>')
+        msg["From"] = os.getenv("EMAIL_FROM",'Expense<buggaramvignesh@gmail.com>')
         msg["To"] = user["email"]
         msg["Subject"] = subject
 
@@ -702,8 +702,8 @@ def send_summary(monthly: bool = False, user=Depends(get_current_user)):
             server.starttls()
             server.ehlo()
             server.login(
-                os.getenv("BREVO_SMTP_USER1",'9f4393001@smtp-brevo.com'),
-                os.getenv("BREVO_SMTP_PASS1",'xsmtpsib-1c047d1f5e5652479f3965f3a249b29b79170eb8f293a6843a17aaa693ee6484-thq4gIaKNXQwiKiR'),
+                os.getenv("BREVO_SMTP_USER"),
+                os.getenv("BREVO_SMTP_PASS"),
             )
             server.send_message(msg)
 
