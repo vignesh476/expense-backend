@@ -1,0 +1,29 @@
+Project Abstract: Expense Tracker - A Django-Powered Financial Management System
+
+Expense Tracker is a comprehensive web-based personal and group finance management application developed as a major project using the Django framework. This full-stack solution addresses the challenges of modern expense tracking by providing an intuitive interface for recording transactions, generating insightful financial reports, and facilitating equitable expense sharing among groups.
+
+The backend leverages Django's robust ORM and authentication system integrated with MongoDB for efficient data persistence, ensuring scalability and data integrity. Key functionalities include secure user authentication (registration, JWT tokens, password recovery), real-time transaction logging for income and expenses, automated daily/monthly financial summaries, and intelligent group expense settlement algorithms for trip planning.
+
+Advanced reporting features enable Excel exports and automated email delivery through SMTP integration (Brevo/Resend), while Docker containerization ensures seamless deployment across development and production environments. The modern React frontend provides a responsive user experience optimized for both desktop and mobile devices.
+
+This project demonstrates proficiency in full-stack development, database design, API development, secure authentication, email automation, file generation (Excel), algorithmic problem-solving (settlement calculations), and containerization technologies. Designed with production-grade security and performance in mind, Expense Tracker serves as a practical solution for personal finance management and collaborative expense tracking in small teams or travel groups.
+
+Technologies: Django (Python), MongoDB, React.js, Docker, JWT Authentication, SMTP Email, Excel Reporting
+
+Project Type: Major College Project - Full-Stack Web Application
+
+
+Task Completed
+Project Abstract: Expense Tracker - A Django-Powered Financial Management System
+
+Expense Tracker is a comprehensive web-based personal and group finance management application developed as a major project using the Django framework. This full-stack solution addresses the challenges of modern expense tracking by providing an intuitive interface for recording transactions, generating insightful financial reports, and facilitating equitable expense sharing among groups.
+
+The backend leverages Django's robust ORM and authentication system integrated with MongoDB for efficient data persistence, ensuring scalability and data integrity. Key functionalities include secure user authentication (registration, JWT tokens, password recovery), real-time transaction logging for income and expenses, automated daily/monthly financial summaries, and intelligent group expense settlement algorithms for trip planning.
+
+Advanced reporting features enable Excel exports and automated email delivery through SMTP integration (Brevo/Resend), while Docker containerization ensures seamless deployment across development and production environments. The modern React frontend provides a responsive user experience optimized for both desktop and mobile devices.
+
+This project demonstrates proficiency in full-stack development, database design, API development, secure authentication, email automation, file generation (Excel), algorithmic problem-solving (settlement calculations), and containerization technologies. Designed with production-grade security and performance in mind, Expense Tracker serves as a practical solution for personal finance management and collaborative expense tracking in small teams or travel groups.
+
+Technologies: Django (Python), MongoDB, React.js, Docker, JWT Authentication, SMTP Email, Excel Reporting
+
+Project Type: Major College Project - Full-Stack Web Application
