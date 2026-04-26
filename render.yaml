@@ -1,0 +1,39 @@
+# Render deployment configuration for Django backend
+# Steps:
+# 1. Go to https://dashboard.render.com/ → New + → Blueprint
+# 2. Connect your GitHub repo
+# 3. Render will read this file and create the web service automatically
+
+services:
+  - type: web
+    name: bhavanis-expense-backend
+    runtime: python
+    buildCommand: |
+      cd backend && pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate
+    startCommand: cd backend && gunicorn expense_tracker.wsgi:application --bind 0.0.0.0:$PORT
+    envVars:
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: DJANGO_ENV
+        value: production
+      - key: FRONTEND_URL
+        value: https://bhavanis-expense-app.vercel.app
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "15"
+      - key: REFRESH_TOKEN_EXPIRE_DAYS
+        value: "7"
+      - key: GUEST_ACCESS_MIN
+        value: "60"
+      - key: GUEST_REFRESH_DAYS
+        value: "1"
+      - key: EMAIL_FROM
+        value: no-reply@example.com
+      - key: PYTHON_VERSION
+        value: "3.11"
+

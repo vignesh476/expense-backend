@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DJANGO_SECRET_KEY=dev_change_me_django_secret
+      - DEBUG=True
+      - DJANGO_ENV=development
+      - JWT_SECRET=dev_change_me_jwt_secret
+      - JWT_REFRESH_SECRET=dev_change_me_jwt_refresh_secret
+      - ACCESS_TOKEN_EXPIRE_MINUTES=15
+      - REFRESH_TOKEN_EXPIRE_DAYS=7
+      - GUEST_ACCESS_MIN=60
+      - GUEST_REFRESH_DAYS=1
+      - FRONTEND_URL=http://localhost:3000
+      - FRONTEND_URL_2=http://localhost:3000
+      - EMAIL_FROM=Expense<no-reply@example.com>
+    depends_on:
+      - mongo
+    networks:
+      - expense-network
+
+  frontend:
+    build: ./expense-ui
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000/api
+    depends_on:
+      - backend
+    networks:
+      - expense-network
+
+  mongo:
+    image: mongo:7.0
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - expense-network
+
+volumes:
+  mongo_data:
+
+networks:
+  expense-network:
+    driver: bridge

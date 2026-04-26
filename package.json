@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "postcss-selector-parser": "^7.1.1"
+  }
+}
